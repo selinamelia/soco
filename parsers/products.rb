@@ -1,36 +1,57 @@
 nokogiri = Nokogiri.HTML(content)
 
-# initialize an empty hash
 product = {}
 
-product['url'] = page['vars']['url']
+product['title'] = nokogiri.at_css('.attM6y span').text.strip
 
-#save the category
-product['category'] = page['vars']['category']
+current_price = nokogiri.at_css('.Ybrg9j').text.strip.gsub('Rp', '')
+if current_price.include? '.'
+	current_price = current_price.gsub('.', '')
+end
+product['current_price'] = current_price
 
-#extract title and brand
-product['title'] = nokogiri.at_css('h1.title').text.strip
-product['brand'] = nokogiri.at_css('p.brand > a').text.strip
+discount_check = nokogiri.at_css('._3LRxdy')
+discount = discount_check ? discount_check.text.strip.split(' ').first : nil
+product['discount'] = discount
 
-#extract size
+original_price_check = nokogiri.at_css('._2MaBXen')
+original_price_check = original_price_check ? original_price_check : nokogiri.at_css('._2MaBXe')
+if original_price_check
+	original_price = original_price_check.text.strip.gsub('Rp', '')
+	if original_price.include? '.'
+		original_price = original_price.gsub('.', '').to_i
+	else
+		original_price = original_price.to_i
+	end
+elsif !original_price_check
+	original_price = nil
+end
+product['original_price'] = original_price
 
-#extract price
-product['disc'] = nokogiri.at_css('span.save').text.strip.gsub('-','')
-product['original_price'] = nokogiri.at_css('span.ori').text.strip
-product['disc_price'] = nokogiri.at_css('span.after').text.strip
+rating_check = nokogiri.at_css('._1mYa1t')
+rating = rating_check ? rating_check.text.strip.to_f : nil
+product['rating'] = rating == 0 ? nil : rating
 
-#extract number of reviews
-product['reviews_count']  = nokogiri.at_css('li.total-review').text
+reviews_count_check = nokogiri.at_css('div._3A3c6_:nth-child(2) .OitLRu')
+reviews_count = reviews_count_check ? reviews_count_check.text.strip.to_i : nil
+product['reviews_count'] = reviews_count == 0 ? nil : reviews_count
 
-#extract rating
-product['rating'] = nokogiri.at_css('li.rating').text
+orders_count_check = nokogiri.at_css('.aca9MM')
+orders_count = orders_count_check ? orders_count_check.text.strip.to_i : nil
+product['orders_count'] = orders_count == 0 ? nil : orders_count
 
-#extract product description
-product['description']  = nokogiri.at_css('div#product-description > div > p').text
+stock_check = nokogiri.at_css('._90fTvx > div:nth-child(2) > div:nth-child(2)')
+stock = stock_check ? stock_check.text.scan(/\d+/).first.to_i : nil
+product['stock'] = stock
 
+img_url = nokogiri.at_css('._3Q7kBy')
+img_url = img_url ? img_url.attr('style') : nokogiri.at_css('._3-_YTZ div div._12uy03').attr('style')
+product['img_url'] = img_url.to_s.scan(/https?[^"]*/).first
 
-# specify the collection where this record will be stored
-product['_collection'] = "products"
+product['seller'] = nokogiri.at_css('._3uf2ae').text.strip
 
-# save the product to the job’s outputs
+product['url'] = page['url']
+
+product['_collection'] = 'products'
+
 outputs << product
